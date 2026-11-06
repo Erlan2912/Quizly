@@ -1,7 +1,9 @@
+
 {
   "name": "quizly",
   "version": "1.0.0",
   "private": true,
+  "type": "commonjs",
   "description": "Quizly — Node.js quiz platform with persistent JSON storage",
   "scripts": {
     "start": "node server.js"
