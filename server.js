@@ -24,8 +24,9 @@ const DEFAULT_SETTINGS = {
   language: 'uz', difficulty: 'mixed', questionCount: 8, showHints: true,
   compactMode: false, reduceMotion: false, accent: 'lime'
 };
-const response = await fetch('/questions.json');
-const QUESTIONS = await response.json();
+
+const QUESTIONS_FILE = path.join(ROOT, 'questions.json');
+const QUESTIONS = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
 
 fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify({ users: [] }, null, 2), { mode: 0o600 });
