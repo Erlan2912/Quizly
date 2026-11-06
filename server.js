@@ -1,18 +1,15 @@
-
-
-
-
-
-
 'use strict';
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
 const PORT = Number(process.env.PORT || 3000);
-const ROOT = __dirname;
+const ROOT = path.dirname(fileURLToPath(import.meta.url)); // __dirname o'rniga
 const PUBLIC = path.join(ROOT, 'public');
+
+
 const DATA_FILE = process.env.QUIZLY_DATA_FILE ||
   (fs.existsSync('/data') && fs.statSync('/data').isDirectory()
     ? '/data/data.json'
