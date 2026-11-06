@@ -28,8 +28,12 @@ const DEFAULT_SETTINGS = {
   compactMode: false, reduceMotion: false, accent: 'lime'
 };
 
-const QUESTIONS_FILE = path.join(ROOT, 'questions.json');
-const QUESTIONS = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
+// const QUESTIONS_FILE = path.join(ROOT, 'questions.js');
+// const QUESTIONS = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
+
+const QUESTIONS_FILE = path.join(ROOT, 'questions.js');
+const QUESTIONS = (await import(QUESTIONS_FILE)).default;
+
 
 fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify({ users: [] }, null, 2), { mode: 0o600 });
@@ -221,4 +225,3 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, '0.0.0.0', () => console.log(`Quizly tayyor: http://0.0.0.0:${PORT} | data: ${DATA_FILE}`));
 
-  
