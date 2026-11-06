@@ -84,11 +84,26 @@ function verifyPassword(password, stored) {
 function safeUser(u) {
   return { id: u.id, username: u.username, firstName: u.firstName || '', lastName: u.lastName || '', avatar: u.avatar || '', xp: u.xp, level: u.level, answers: u.answers, correct: u.correct, quizHistory: u.quizHistory || [], settings: { ...DEFAULT_SETTINGS, ...u.settings } };
 }
-async function readBody(req) {
-  let raw = '';
-  for await (const chunk of req) { raw += chunk; if (raw.length > 1e6) throw Object.assign(new Error('So‘rov hajmi juda katta.'), { status: 413 }); }
-  try { return raw ? JSON.parse(raw) : {}; } catch { throw Object.assign(new Error('JSON formati noto‘g‘ri.'), { status: 400 }); }
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', chunk => {
+      raw += chunk;
+      if (raw.length > 1e6) {
+        reject(Object.assign(new Error('So‘rov hajmi juda katta.'), { status: 413 }));
+      }
+    });
+    req.on('end', () => {
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch {
+        reject(Object.assign(new Error('JSON formati noto‘g‘ri.'), { status: 400 }));
+      }
+    });
+    req.on('error', err => reject(err));
+  });
 }
+
 function levelFor(xp) { return Math.floor(xp / 100) + 1; }
 function publicQuestion(q) { return { id: q.id, d: q.d, q: q.q, a: q.a, hint: q.hint }; }
 function serveStatic(req, res, url) {
