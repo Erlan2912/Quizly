@@ -32,7 +32,33 @@ const DEFAULT_SETTINGS = {
 // const QUESTIONS = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
 
 const QUESTIONS_FILE = path.join(ROOT, 'questions.js');
-const QUESTIONS = (await import(QUESTIONS_FILE)).default;
+
+const importedQuestions = (await import(QUESTIONS_FILE)).default;
+
+if (!importedQuestions || typeof importedQuestions !== 'object') {
+  throw new Error('questions.js faylida savollar topilmadi.');
+}
+
+const questionGroups = Array.isArray(importedQuestions)
+  ? { general: importedQuestions }
+  : importedQuestions;
+
+const QUESTIONS = Object.values(questionGroups)
+  .flat()
+  .map(q => ({
+    id: q.id,
+    subjectId: q.subjectId,
+    subject: q.subject,
+    d: q.difficulty,
+    q: q.question,
+    a: q.options,
+    c: q.correctAnswer,
+    hint: q.hint
+  }));
+
+if (!QUESTIONS.length) {
+  throw new Error('Savollar ro‘yxati bo‘sh.');
+}
 
 
 fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
@@ -111,7 +137,15 @@ function readBody(req) {
 }
 
 function levelFor(xp) { return Math.floor(xp / 100) + 1; }
-function publicQuestion(q) { return { id: q.id, d: q.d, q: q.q, a: q.a, hint: q.hint }; }
+// function publicQuestion(q) { return { id: q.id, d: q.d, q: q.q, a: q.a, hint: q.hint }; }
+function publicQuestion(q) {
+  return {
+    id: q.id,
+    question: q.q,
+    options: q.a,
+    hint: q.hint
+  };
+}
 function serveStatic(req, res, url) {
   let pathname;
   try { pathname = decodeURIComponent(url.pathname); } catch { return json(res, 400, { error: 'URL noto‘g‘ri.' }); }
@@ -151,6 +185,27 @@ const server = http.createServer(async (req, res) => {
       u.lastLogin = new Date().toISOString(); writeDb(db);
       return json(res, 200, { token: token(u.id), user: safeUser(u) });
     });
+      if (req.method === 'GET' && route === '/quiz/subjects') {
+  const subjectsMap = new Map();
+
+  for (const q of QUESTIONS) {
+    if (!q.subjectId) continue;
+
+    if (!subjectsMap.has(q.subjectId)) {
+      subjectsMap.set(q.subjectId, {
+        id: q.subjectId,
+        name: q.subject || q.subjectId,
+        count: 0
+      });
+    }
+
+    subjectsMap.get(q.subjectId).count++;
+  }
+
+  return json(res, 200, {
+    subjects: Array.from(subjectsMap.values())
+  });
+}
     const auth = String(req.headers.authorization || ''), id = userId(auth.startsWith('Bearer ') ? auth.slice(7) : '');
     if (!id) return json(res, 401, { error: 'Sessiya tugagan. Qayta login qiling.' });
     const db = readDb(), user = db.users.find(x => x.id === id);
@@ -164,7 +219,7 @@ const server = http.createServer(async (req, res) => {
         if (k === 'theme' && !['dark', 'light'].includes(v)) continue;
         if (k === 'language' && !['uz', 'en', 'ru'].includes(v)) continue;
         if (k === 'difficulty' && !['mixed', 'easy', 'medium', 'hard'].includes(v)) continue;
-        if (k === 'questionCount') s[k] = Math.max(5, Math.min(20, Number(v) || 8));
+        if (k === 'questionCount') s[k] = Math.max(8, Math.min(20, Number(v) || 8));
         else if (typeof DEFAULT_SETTINGS[k] === 'boolean') s[k] = !!v;
         else if (k === 'accent' && !['lime', 'violet', 'blue'].includes(v)) continue;
         else s[k] = v;
@@ -182,18 +237,65 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { leaderboard });
     }
     if (req.method === 'GET' && route === '/history') return json(res, 200, { history: user.quizHistory || [] });
-    if (req.method === 'POST' && route === '/quiz/start') return await serialized(() => {
-      const fresh = readDb(), u = fresh.users.find(x => x.id === id); if (!u) return json(res, 404, { error: 'Account topilmadi.' });
-      const difficulty = ['easy', 'medium', 'hard'].includes(data.difficulty) ? data.difficulty : 'mixed';
-      const count = Math.max(5, Math.min(20, Number(data.count) || 8));
-      let pool = QUESTIONS.filter(q => difficulty === 'mixed' || q.d === difficulty);
-      if (pool.length < count) pool = QUESTIONS;
-      const selected = pool.slice().sort(() => Math.random() - .5).slice(0, Math.min(count, pool.length));
-      const quizId = crypto.randomUUID();
-      u.activeQuiz = { id: quizId, questionIds: selected.map(q => q.id), answers: [], startedAt: new Date().toISOString() };
-      writeDb(fresh);
-      return json(res, 200, { quizId, questions: selected.map(publicQuestion) });
+if (req.method === 'POST' && route === '/quiz/start') return await serialized(() => {
+  const fresh = readDb();
+  const u = fresh.users.find(x => x.id === id);
+
+  if (!u) {
+    return json(res, 404, { error: 'Account topilmadi.' });
+  }
+
+  const difficulty = ['easy', 'medium', 'hard'].includes(data.difficulty)
+    ? data.difficulty
+    : 'mixed';
+
+  const count = Math.max(8, Math.min(20, Number(data.count) || 8));
+
+  let pool = QUESTIONS;
+
+  if (data.subjectId) {
+    pool = pool.filter(q => q.subjectId === data.subjectId);
+
+    if (!pool.length) {
+      return json(res, 404, { error: 'Bu fan bo‘yicha savollar topilmadi.' });
+    }
+  }
+
+  if (difficulty !== 'mixed') {
+    const filtered = pool.filter(q => q.d === difficulty);
+
+    if (filtered.length >= count) {
+      pool = filtered;
+    }
+  }
+
+  if (pool.length < count) {
+    return json(res, 400, {
+      error: `Bu fan uchun yetarli savol yo‘q. Mavjud savollar: ${pool.length}`
     });
+  }
+
+  const selected = pool
+    .slice()
+    .sort(() => Math.random() - 0.5)
+    .slice(0, count);
+
+  const quizId = crypto.randomUUID();
+
+  u.activeQuiz = {
+    id: quizId,
+    questionIds: selected.map(q => q.id),
+    answers: [],
+    startedAt: new Date().toISOString()
+  };
+// if (k === 'questionCount') s[k] = Math.max(8, Math.min(20, Number(v) || 8));
+  writeDb(fresh);
+
+  return json(res, 200, {
+    quizId,
+    questions: selected.map(publicQuestion)
+  });
+});
     if (req.method === 'POST' && route === '/quiz/answer') return await serialized(() => {
       const fresh = readDb(), u = fresh.users.find(x => x.id === id); if (!u) return json(res, 404, { error: 'Account topilmadi.' });
       const qz = u.activeQuiz;
