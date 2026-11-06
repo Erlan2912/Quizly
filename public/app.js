@@ -220,7 +220,7 @@ function home() {
 <div class="card-grid"><div class="topic-card" onclick="setPage('quiz')"><span class="emoji">⚡</span><h3>Quick quiz</h3><p>Tezkor bilim sinovi</p></div><div class="topic-card" onclick="setPage('rank')"><span class="emoji">♛</span><h3>Leaderboard</h3><p>Eng kuchlilar safi</p></div></div>`}
 function rankOfUser() { const i = state.leaderboard.findIndex(x => x.username === state.user.username); return i < 0 ? '—' : i + 1 }
 async function quizPage() {
-  view.innerHTML = `<h1 class="page-title">Quiz arena</h1><p class="page-sub">Fan tanlang va 80 ta savol orqali bilimingizni sinang.</p><div id="subjectGrid" class="card-grid"><div class="panel">Fanlar yuklanmoqda...</div></div><div class="panel" style="margin-top:16px"><span class="muted-label">YOUR PROGRESS</span><h2>${state.user.answers || 0} answered</h2><p class="page-sub" style="margin:0">To‘g‘ri javoblar: ${state.user.correct || 0}</p></div>`;
+  view.innerHTML = `<h1 class="page-title">Quiz arena</h1><p class="page-sub">Fan tanlang va 8-20 ta savol orqali bilimingizni sinang.</p><div id="subjectGrid" class="card-grid"><div class="panel">Fanlar yuklanmoqda...</div></div><div class="panel" style="margin-top:16px"><span class="muted-label">YOUR PROGRESS</span><h2>${state.user.answers || 0} answered</h2><p class="page-sub" style="margin:0">To‘g‘ri javoblar: ${state.user.correct || 0}</p></div>`;
   try {
     if (!quizSubjects.length) quizSubjects = (await api('/quiz/subjects')).subjects || [];
     const icons = { history: '📜', english: '🔤', russian: '🇷🇺', math: '➗', biology: '🧬', chemistry: '⚗️', uzbek: '📚', law: '⚖️' };
@@ -229,7 +229,11 @@ async function quizPage() {
 }
 async function startQuiz(subjectId = null) {
   try {
-    const payload = subjectId ? { subjectId, count: 80 } : { difficulty: settings().difficulty || 'mixed', count: Number(settings().questionCount) || 8 };
+    const payload = {
+      ...(subjectId ? { subjectId } : {}),
+      difficulty: settings().difficulty || 'mixed',
+      count: Number(settings().questionCount) || 8
+    };
     const d = await api('/quiz/start', { method: 'POST', body: JSON.stringify(payload) });
     activeQuizId = d.quizId; selectedSubject = subjectId; questions = d.questions || []; quizIndex = 0; quizScore = 0; answered = false; answerResults = {};
     if (!questions.length) throw Error('Savollar mavjud emas.'); showQuestion();
