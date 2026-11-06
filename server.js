@@ -1,15 +1,18 @@
+
+
+
+
+
+
 'use strict';
-import http from 'http';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
-import { fileURLToPath } from 'url';
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 const PORT = Number(process.env.PORT || 3000);
-const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
-
-
 const DATA_FILE = process.env.QUIZLY_DATA_FILE ||
   (fs.existsSync('/data') && fs.statSync('/data').isDirectory()
     ? '/data/data.json'
@@ -84,6 +87,8 @@ function verifyPassword(password, stored) {
 function safeUser(u) {
   return { id: u.id, username: u.username, firstName: u.firstName || '', lastName: u.lastName || '', avatar: u.avatar || '', xp: u.xp, level: u.level, answers: u.answers, correct: u.correct, quizHistory: u.quizHistory || [], settings: { ...DEFAULT_SETTINGS, ...u.settings } };
 }
+
+// Xatolik bergan joy shu yerda to'g'rilandi:
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
@@ -218,3 +223,5 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.listen(PORT, '0.0.0.0', () => console.log(`Quizly tayyor: http://0.0.0.0:${PORT} | data: ${DATA_FILE}`));
+
+  
