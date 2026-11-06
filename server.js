@@ -199,4 +199,4 @@ const server = http.createServer(async (req, res) => {
     return json(res, e.status || 500, { error: e.status ? e.message : 'Serverda kutilmagan xatolik yuz berdi.' });
   }
 });
-server.listen(PORT, '0.0.0.0', () => console.log(`Quizly tayyor: http://0.0.0.0:${PORT} | data: ${DATA_FILE}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Quizly tayyor: http://localhost:${PORT} | data: ${DATA_FILE}`));
